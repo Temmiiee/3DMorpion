@@ -1,0 +1,7 @@
+# robots.txt pour Morpion 3D
+User-agent: *
+Allow: /
+
+# Sitemap
+Sitemap: https://morpion3d.com/sitemap.xml
+
