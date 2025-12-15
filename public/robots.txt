@@ -1,4 +1,3 @@
-# robots.txt pour Morpion 3D
 User-agent: *
 Allow: /
 
