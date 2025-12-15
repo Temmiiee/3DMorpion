@@ -5,6 +5,7 @@ const CoinFlipModal = ({
     coinFlipChoice,
     coinFlipping,
     coinFlipResult,
+    userSymbol,
     onCoinFlipChoice
 }) => {
     // Styles réutilisables
@@ -45,43 +46,7 @@ const CoinFlipModal = ({
         background: '#000'
     };
 
-    const renderCoinButton = (symbol, color) => {
-        const symbolName = symbol === 'X' ? 'Croix (Rouge)' : 'Cercle (Bleu)';
-        return (
-            <button
-                onClick={() => onCoinFlipChoice(symbol)}
-                aria-label={`Choisir ${symbolName} pour le pile ou face`}
-                style={{
-                    width: '120px',
-                    height: '120px',
-                    background: '#000',
-                    border: `2px solid ${color}`,
-                    borderRadius: '50%',
-                    color: color,
-                    fontSize: '4rem',
-                    cursor: 'pointer',
-                    transition: 'all 0.2s',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    fontWeight: 'bold',
-                    fontFamily: 'Arial, sans-serif',
-                    lineHeight: 1,
-                    padding: 0
-                }}
-                onMouseEnter={(e) => {
-                    e.target.style.background = color;
-                    e.target.style.color = '#000';
-                }}
-                onMouseLeave={(e) => {
-                    e.target.style.background = '#000';
-                    e.target.style.color = color;
-                }}
-            >
-                <span aria-hidden="true">{symbol === 'X' ? '✕' : '◯'}</span>
-            </button>
-        );
-    };
+    // manual choice removed — toss runs automatically
 
     const renderCoinFace = (symbol, color, rotation = 0) => (
         <div
@@ -100,73 +65,17 @@ const CoinFlipModal = ({
         </div>
     );
 
-    // Écran de choix
-    if (!coinFlipChoice) {
-        return (
-            <div
-                style={overlayStyle}
-                role="dialog"
-                aria-modal="true"
-                aria-labelledby="coinflip-title"
-                aria-describedby="coinflip-description"
-            >
-                <div style={modalStyle}>
-                    <h2
-                        id="coinflip-title"
-                        style={{
-                            color: '#00e5ff',
-                            fontSize: '1.5rem',
-                            marginBottom: '20px',
-                            fontFamily: 'monospace',
-                            textTransform: 'uppercase',
-                            letterSpacing: '4px',
-                            fontWeight: 'normal'
-                        }}
-                    >
-                        PILE OU FACE
-                    </h2>
-
-                    <p
-                        id="coinflip-description"
-                        style={{
-                            color: '#6b7280',
-                            marginBottom: '30px',
-                            lineHeight: '1.6',
-                            fontSize: '0.9rem',
-                            fontFamily: 'monospace'
-                        }}
-                    >
-                        {gameMode === 'misere'
-                            ? 'Le perdant aura sa couleur au centre'
-                            : 'Le gagnant aura sa couleur au centre'}
-                    </p>
-
-                    <p style={{
-                        color: '#00e5ff',
-                        marginBottom: '30px',
-                        fontSize: '0.9rem',
-                        fontFamily: 'monospace',
-                        letterSpacing: '2px'
-                    }}>
-                        CHOISISSEZ VOTRE CÔTÉ
-                    </p>
-
-                    <div
-                        role="group"
-                        aria-label="Choix du symbole pour le pile ou face"
-                        style={{
-                            display: 'flex',
-                            gap: '30px',
-                            justifyContent: 'center'
-                        }}
-                    >
-                        {renderCoinButton('X', '#ff0040')}
-                        {renderCoinButton('O', '#00e5ff')}
-                    </div>
-                </div>
-            </div>
-        );
-    }
+    // Auto-run toss: display introductory screen while toss is performed automatically.
+    // We remove manual choice UI — toss will use `userSymbol` if present, otherwise a random pick.
+    // If toss hasn't started yet (`!coinFlipChoice && !coinFlipping && !coinFlipResult`),
+    // trigger `onCoinFlipChoice` automatically shortly after mount.
+    React.useEffect(() => {
+        if (!coinFlipChoice && !coinFlipping && !coinFlipResult) {
+            const choiceToUse = userSymbol || (Math.random() < 0.5 ? 'X' : 'O');
+            const timer = setTimeout(() => onCoinFlipChoice(choiceToUse), 300);
+            return () => clearTimeout(timer);
+        }
+    }, [userSymbol, coinFlipChoice, coinFlipping, coinFlipResult, onCoinFlipChoice]);
 
     // Écran d'animation/résultat
     return (
@@ -240,64 +149,70 @@ const CoinFlipModal = ({
                     </>
                 )}
 
-                {coinFlipResult && !coinFlipping && (
-                    <div style={{
-                        animation: 'resultAppear 0.4s ease-out'
-                    }}>
-                        <div style={{
-                            width: '120px',
-                            height: '120px',
-                            margin: '0 auto 30px',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            fontSize: '5rem',
-                            fontWeight: 'bold',
-                            color: coinFlipResult === 'X' ? '#ff0040' : '#00e5ff',
-                            border: `2px solid ${coinFlipResult === 'X' ? '#ff0040' : '#00e5ff'}`,
-                            borderRadius: '50%',
-                            background: '#000',
-                            lineHeight: 1
-                        }}>
-                            {coinFlipResult === 'X' ? '✕' : '◯'}
-                        </div>
+                {coinFlipResult && !coinFlipping && (() => {
+                    const didPlayerWin = coinFlipResult === coinFlipChoice;
+                    const centerSymbol = (gameMode === 'misere')
+                        ? (didPlayerWin ? (coinFlipChoice === 'X' ? 'O' : 'X') : coinFlipChoice)
+                        : (didPlayerWin ? coinFlipChoice : (coinFlipChoice === 'X' ? 'O' : 'X'));
 
-                        <div style={{
-                            fontSize: '1.2rem',
-                            fontWeight: 'normal',
-                            marginBottom: '20px',
-                            fontFamily: 'monospace',
-                            letterSpacing: '2px',
-                            color: coinFlipResult === coinFlipChoice 
-                                ? (gameMode === 'misere' ? '#ff0040' : '#00e5ff')
-                                : (gameMode === 'misere' ? '#00e5ff' : '#ff0040')
-                        }}>
-                            {coinFlipResult === coinFlipChoice ? (
-                                <span>
-                                    {gameMode === 'misere' ? 'VOUS PERDEZ' : 'VOUS GAGNEZ'}
-                                </span>
-                            ) : (
-                                <span>
-                                    {gameMode === 'misere' ? 'VOUS GAGNEZ' : 'VOUS PERDEZ'}
-                                </span>
-                            )}
-                        </div>
+                    const centerColor = centerSymbol === 'X' ? '#ff0040' : '#00e5ff';
+                    const centerLabel = centerSymbol === 'X' ? 'ROUGE' : 'BLEU';
 
-                        <p style={{
-                            color: '#6b7280',
-                            fontSize: '0.9rem',
-                            lineHeight: '1.6',
-                            fontFamily: 'monospace'
-                        }}>
-                            <span style={{
-                                color: coinFlipResult === 'X' ? '#ff0040' : '#00e5ff'
+                    return (
+                        <div style={{ animation: 'resultAppear 0.4s ease-out' }}>
+                            <div style={{
+                                width: '120px',
+                                height: '120px',
+                                margin: '0 auto 20px',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                fontSize: '5rem',
+                                fontWeight: 'bold',
+                                color: coinFlipResult === 'X' ? '#ff0040' : '#00e5ff',
+                                border: `2px solid ${coinFlipResult === 'X' ? '#ff0040' : '#00e5ff'}`,
+                                borderRadius: '50%',
+                                background: '#000',
+                                lineHeight: 1
                             }}>
-                                {coinFlipResult}
-                            </span>
-                            {' '}COMMENCE AU CENTRE
-                        </p>
-                    </div>
-                )}
+                                {coinFlipResult === 'X' ? '✕' : '◯'}
+                            </div>
+
+                            <h3 style={{
+                                color: didPlayerWin ? '#00e5ff' : '#ff0040',
+                                fontSize: '1rem',
+                                marginBottom: '10px',
+                                letterSpacing: '2px',
+                                fontFamily: 'monospace'
+                            }}>
+                                {didPlayerWin ? 'VOUS GAGNEZ LE TOSS' : 'VOUS PERDEZ LE TOSS'}
+                            </h3>
+
+                            <p style={{
+                                color: '#6b7280',
+                                fontSize: '0.9rem',
+                                lineHeight: '1.4',
+                                fontFamily: 'monospace',
+                                marginBottom: '12px'
+                            }}>
+                                {gameMode === 'misere' ? (
+                                    'Mode MISÈRE : le gagnant reçoit l\'inconvénient — la couleur adverse peut se retrouver au centre.'
+                                ) : (
+                                    'Mode NORMAL : le gagnant obtient l\'avantage (sa couleur au centre).'
+                                )}
+                            </p>
+
+                            <div style={{
+                                fontSize: '1.1rem',
+                                fontWeight: 'bold',
+                                marginBottom: '6px',
+                                fontFamily: 'monospace'
+                            }}>
+                                AU CENTRE: <span style={{ color: centerColor }}>{centerLabel}</span>
+                            </div>
+                        </div>
+                    );
+                })()}
             </div>
         </div>
     );

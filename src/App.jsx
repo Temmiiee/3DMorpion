@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { useGameLogic } from './hooks/useGameLogic';
 import CubeScene from './components/CubeScene';
 import Controls from './components/Controls';
@@ -14,63 +14,89 @@ function App() {
   const [coinFlipChoice, setCoinFlipChoice] = useState(null); // 'X' or 'O'
   const [coinFlipResult, setCoinFlipResult] = useState(null);
   const [coinFlipping, setCoinFlipping] = useState(false);
-  const [coinFlipSymbol, setCoinFlipSymbol] = useState('X');
+  
+  const [userSymbol, setUserSymbol] = useState(null); // 'X' or 'O' pour "vous"
 
   const [opponent, setOpponent] = useState('human'); // 'human' or 'bot'
 
   const {
     board,
     currentPlayer,
-    gameActive,
+    setCurrentPlayer,
     scores,
-    losingLine,
     winner,
     handleCellClick,
     resetGame,
     fullReset,
     setBoard
-  } = useGameLogic(gameMode, opponent);
+  } = useGameLogic(gameMode, opponent, userSymbol);
 
   const [rotation, setRotation] = useState({ x: -20, y: -20 });
 
-  const handleModeSelect = (mode, opponentType) => {
+  const handleModeSelect = (mode, opponentType, userColorChoice) => {
     setGameMode(mode);
     setOpponent(opponentType || 'human');
     setShowModeSelection(false);
     setShowCoinFlip(true);
+
+    // If user chose a fixed color, assign it now. If random, pick randomly.
+    if (userColorChoice === 'random') {
+      const rand = Math.random() < 0.5 ? 'X' : 'O';
+      setUserSymbol(rand);
+      // do not prefill coinFlipChoice so modal shows and user can confirm/start
+    } else if (userColorChoice === 'X' || userColorChoice === 'O') {
+      setUserSymbol(userColorChoice);
+      // do not set coinFlipChoice here to avoid entering the result screen prematurely
+    } else {
+      // no choice -> let coin flip modal ask
+      setCoinFlipChoice(null);
+    }
   };
 
   const handleCoinFlipChoice = (choice) => {
+    performCoinFlip(choice);
+  };
+
+  const performCoinFlip = (choice) => {
+    // choice: the symbol the player is considered to have called (X or O)
     setCoinFlipChoice(choice);
+    if (!userSymbol) setUserSymbol(choice);
     setCoinFlipping(true);
 
-    // Alternate symbols during flip
-    const interval = setInterval(() => {
-      setCoinFlipSymbol(prev => prev === 'X' ? 'O' : 'X');
-    }, 150);
-
     setTimeout(() => {
-      clearInterval(interval);
       const result = Math.random() < 0.5 ? 'X' : 'O';
       setCoinFlipResult(result);
       setCoinFlipping(false);
 
       setTimeout(() => {
         // Place color in center based on mode and result
-        let colorToPlace;
+        const other = (s) => s === 'X' ? 'O' : 'X';
+        const userIsWinner = result === choice;
+
+        let centerSymbol;
         if (gameMode === 'misere') {
-          // In Misere mode: if you WIN the flip, you get the DISADVANTAGE (opponent's color in center)
-          // If you LOSE the flip, you get the ADVANTAGE (your color in center)
-          colorToPlace = result === choice ? (choice === 'X' ? 'O' : 'X') : choice;
+          centerSymbol = userIsWinner ? other(choice) : choice;
         } else {
-          // In Normal mode: if you WIN the flip, you get the ADVANTAGE (your color in center)
-          // If you LOSE the flip, you get the DISADVANTAGE (opponent's color in center)
-          colorToPlace = result === choice ? choice : (choice === 'X' ? 'O' : 'X');
+          centerSymbol = userIsWinner ? choice : other(choice);
         }
 
         const newBoard = board.map(plane => plane.map(row => [...row]));
-        newBoard[1][1][1] = colorToPlace;
+        newBoard[1][1][1] = centerSymbol;
         setBoard(newBoard);
+
+        // Determine starting player:
+        // - By default the non-winner starts (other of tossWinner).
+        // - Exception (MISERE): if the toss winner causes the opponent to have the center,
+        //   then the toss winner should start.
+        const tossWinner = result;
+        let startingPlayer = other(tossWinner);
+        if (gameMode === 'misere') {
+          // if centerSymbol is given to the opponent of tossWinner, then tossWinner starts
+          if (centerSymbol !== tossWinner) {
+            startingPlayer = tossWinner;
+          }
+        }
+        setCurrentPlayer(startingPlayer);
 
         setShowCoinFlip(false);
       }, 2000);
@@ -102,16 +128,14 @@ function App() {
     });
   };
 
-  const handleRotationChange = (newRotation) => {
-    // Rotation libre sans contraintes pour une visualisation 3D complète
-    setRotation(newRotation);
-  };
+  
 
   const handleNewGame = () => {
     resetGame();
     setShowModeSelection(true);
     setCoinFlipResult(null);
     setCoinFlipChoice(null);
+    setUserSymbol(null);
   };
 
   const handleFullReset = () => {
@@ -123,6 +147,7 @@ function App() {
     setCoinFlipChoice(null); // Réinitialise le choix du coin flip
     setCoinFlipping(false); // Arrête l'animation du coin flip
     setRotation({ x: -20, y: -20 }); // Réinitialise la rotation du cube
+    setUserSymbol(null);
   };
 
   return (
@@ -163,6 +188,7 @@ function App() {
           coinFlipChoice={coinFlipChoice}
           coinFlipping={coinFlipping}
           coinFlipResult={coinFlipResult}
+          userSymbol={userSymbol}
           onCoinFlipChoice={handleCoinFlipChoice}
         />
       )}
@@ -226,7 +252,7 @@ function App() {
             setRotation={setRotation}
           />
 
-          <div
+            <div
             role="status"
             aria-live="polite"
             aria-atomic="true"
@@ -253,11 +279,18 @@ function App() {
                 </span>
               )
             ) : (
-              <span>
-                <span style={{ color: currentPlayer === 'X' ? '#ff0040' : '#00e5ff' }}>
-                  {currentPlayer === 'X' ? 'ROUGE' : 'BLEU'}
-                </span>
-              </span>
+                <div>
+                  <div style={{ marginBottom: '6px' }}>
+                    TOUR: <span style={{ color: currentPlayer === 'X' ? '#ff0040' : '#00e5ff' }}>
+                      {currentPlayer === 'X' ? 'ROUGE' : 'BLEU'}
+                    </span>
+                  </div>
+                  <div style={{ fontSize: '0.85em', color: '#6b7280' }}>
+                    VOUS: <span style={{ color: userSymbol === 'X' ? '#ff0040' : '#00e5ff' }}>
+                      {userSymbol === 'X' ? 'ROUGE' : userSymbol === 'O' ? 'BLEU' : '—'}
+                    </span>
+                  </div>
+                </div>
             )}
           </div>
         </section>

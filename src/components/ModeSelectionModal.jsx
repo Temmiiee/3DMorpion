@@ -1,8 +1,9 @@
 import React from 'react';
 
 const ModeSelectionModal = ({ onModeSelect }) => {
-    const [step, setStep] = React.useState('opponent'); // 'opponent' or 'rules'
+    const [step, setStep] = React.useState('opponent'); // 'opponent' or 'rules' or 'color'
     const [opponent, setOpponent] = React.useState(null); // 'bot' or 'human'
+    const [selectedRule, setSelectedRule] = React.useState(null);
 
     const handleOpponentSelect = (type) => {
         setOpponent(type);
@@ -10,7 +11,13 @@ const ModeSelectionModal = ({ onModeSelect }) => {
     };
 
     const handleRuleSelect = (rule) => {
-        onModeSelect(rule, opponent);
+        setSelectedRule(rule);
+        setStep('color');
+    };
+
+    const handleColorSelect = (choice) => {
+        // choice: 'X', 'O', or 'random'
+        onModeSelect(selectedRule, opponent, choice);
     };
 
     return (
@@ -73,7 +80,7 @@ const ModeSelectionModal = ({ onModeSelect }) => {
                                 </div>
                             </button>
                         </>
-                    ) : (
+                    ) : step === 'rules' ? (
                         <>
                             <button
                                 onClick={() => handleRuleSelect('normal')}
@@ -99,6 +106,58 @@ const ModeSelectionModal = ({ onModeSelect }) => {
 
                             <button
                                 onClick={() => setStep('opponent')}
+                                style={{
+                                    ...buttonStyle('#fff'),
+                                    background: 'transparent',
+                                    border: '1px solid #666',
+                                    color: '#fff',
+                                    marginTop: '10px',
+                                    padding: '10px'
+                                }}
+                            >
+                                RETOUR
+                            </button>
+                        </>
+                    ) : (
+                        // color selection step
+                        <>
+                            <div style={{ display: 'flex', gap: '10px' }}>
+                                <button
+                                    onClick={() => handleColorSelect('X')}
+                                    style={buttonStyle('#ff0040')}
+                                    aria-label="Choisir Rouge (X)"
+                                >
+                                    ROUGE
+                                    <div style={subTextStyle}>Vous jouez ROUGE (X)</div>
+                                </button>
+
+                                <button
+                                    onClick={() => handleColorSelect('O')}
+                                    style={buttonStyle('#00e5ff')}
+                                    aria-label="Choisir Bleu (O)"
+                                >
+                                    BLEU
+                                    <div style={subTextStyle}>Vous jouez BLEU (O)</div>
+                                </button>
+                            </div>
+
+                            <button
+                                onClick={() => handleColorSelect('random')}
+                                style={{
+                                    ...buttonStyle('#fff'),
+                                    background: 'transparent',
+                                    border: '1px solid #666',
+                                    color: '#fff',
+                                    marginTop: '10px',
+                                    padding: '10px'
+                                }}
+                            >
+                                ALÉATOIRE
+                                <div style={subTextStyle}>Attribuer la couleur aléatoirement</div>
+                            </button>
+
+                            <button
+                                onClick={() => setStep('rules')}
                                 style={{
                                     ...buttonStyle('#fff'),
                                     background: 'transparent',

@@ -48,7 +48,7 @@ function generateWinningLines() {
 
 generateWinningLines();
 
-export function useGameLogic(gameMode = 'misere', opponent = 'human') {
+export function useGameLogic(gameMode = 'misere', opponent = 'human', userSymbol = null) {
     const [board, setBoard] = useState(Array(3).fill().map(() => Array(3).fill().map(() => Array(3).fill(null))));
     const [currentPlayer, setCurrentPlayer] = useState('X');
     const [gameActive, setGameActive] = useState(true);
@@ -127,7 +127,8 @@ export function useGameLogic(gameMode = 'misere', opponent = 'human') {
     const handleCellClick = useCallback((x, y, z) => {
         // Prevent interaction if game inactive, cell taken, OR if it's bot's turn
         if (!gameActive || board[x][y][z] !== null) return;
-        if (opponent === 'bot' && currentPlayer === 'O') return; 
+        const botSymbol = opponent === 'bot' ? (userSymbol ? (userSymbol === 'X' ? 'O' : 'X') : 'O') : null;
+        if (opponent === 'bot' && botSymbol && currentPlayer === botSymbol) return; 
 
         const newBoard = board.map(plane => plane.map(row => [...row]));
         newBoard[x][y][z] = currentPlayer;
@@ -138,7 +139,8 @@ export function useGameLogic(gameMode = 'misere', opponent = 'human') {
 
     // BOT LOGIC
     useEffect(() => {
-        if (opponent === 'bot' && currentPlayer === 'O' && gameActive) {
+        const botSymbol = opponent === 'bot' ? (userSymbol ? (userSymbol === 'X' ? 'O' : 'X') : 'O') : null;
+        if (opponent === 'bot' && botSymbol && currentPlayer === botSymbol && gameActive) {
             // Simple random delay to simulate thinking
             const timer = setTimeout(() => {
                 const emptyCells = [];
@@ -154,9 +156,9 @@ export function useGameLogic(gameMode = 'misere', opponent = 'human') {
                     const randomCell = emptyCells[Math.floor(Math.random() * emptyCells.length)];
                     
                     const newBoard = board.map(plane => plane.map(row => [...row]));
-                    newBoard[randomCell.x][randomCell.y][randomCell.z] = 'O';
+                    newBoard[randomCell.x][randomCell.y][randomCell.z] = botSymbol;
                     setBoard(newBoard);
-                    processTurn(newBoard, 'O');
+                    processTurn(newBoard, botSymbol);
                 }
             }, 1000); // 1 second think time
 
@@ -167,6 +169,7 @@ export function useGameLogic(gameMode = 'misere', opponent = 'human') {
     return {
         board,
         currentPlayer,
+        setCurrentPlayer,
         gameActive,
         scores,
         losingLine,
