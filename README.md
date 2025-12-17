@@ -2,7 +2,7 @@
 
 A visually stunning, neon-soaked 3D Tic-Tac-Toe game built with **React Three Fiber**. Experience the classic strategy game in a completely new dimension with glowing aesthetics, smooth animations, and deep strategy modes.
 
-![Play Here](https://3d-morpion.pages.dev/)
+[Play Here](https://3d-morpion.pages.dev/)
 
 ## ✨ Features
 
